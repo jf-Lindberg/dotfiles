@@ -1,0 +1,11 @@
+[user]
+	name = jf-Lindberg
+	email = WORK_EMAIL_PLACEHOLDER
+
+[credential]
+	helper = osxkeychain
+[push]
+	autoSetupRemote = true
+
+[includeIf "gitdir:~/dev/personal/"]
+	path = ~/.gitconfig-personal

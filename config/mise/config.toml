@@ -1,0 +1,6 @@
+# Global runtime versions. Per-project versions come from a local
+# mise.toml / .tool-versions / .nvmrc, which override these.
+[tools]
+node = "lts"
+python = "3.13"
+go = "1.26"
