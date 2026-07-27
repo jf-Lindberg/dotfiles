@@ -17,8 +17,10 @@ while IFS=$'\t' read -r url target || [ -n "$url" ]; do
 
   # A literal ~/ prefix is convenient in the manifest but is not expanded
   # automatically when read from a file.
-  if [[ "$target" = "~/"* ]]; then
-    target="$HOME/${target#"~/"}"
+  # shellcheck disable=SC2088  # The tilde is intentionally literal here.
+  tilde_prefix="~/"
+  if [[ "$target" = "$tilde_prefix"* ]]; then
+    target="$HOME/${target#"$tilde_prefix"}"
   fi
 
   if [ -d "$target" ]; then
