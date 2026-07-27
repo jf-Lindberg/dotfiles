@@ -14,6 +14,7 @@ brew "ripgrep"
 brew "fd"
 brew "ast-grep"
 brew "just"
+brew "onefetch"               # engineering-system: derive-repo.sh reads its JSON output
 brew "tmux"
 brew "neovim"
 brew "tree-sitter-cli"        # nvim treesitter dependency
