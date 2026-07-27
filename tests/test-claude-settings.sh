@@ -5,12 +5,18 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-settings.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 
+# The greps below search for these strings literally; expanding them here
+# would defeat the assertion.
+# shellcheck disable=SC2016
 grep -qF 'source "$HOME/dev/worklog/config/shell/aliases.sh"' \
   "$ROOT/home/.zshrc"
+# shellcheck disable=SC2016
 grep -qF '"$HOME/dev/worklog/scripts/setup.sh" --no-settings --no-aliases' \
   "$ROOT/steps/70-worklog.sh"
+# shellcheck disable=SC2016
 grep -qF '"$ENGINEERING_ROOT/scripts/setup.sh" --no-settings' \
   "$ROOT/steps/75-engineering-system.sh"
+# shellcheck disable=SC2016
 if grep -Eq '^[[:space:]]*"\$ENGINEERING_ROOT/scripts/setup\.sh"' \
   "$ROOT/steps/80-claude-settings.sh"; then
   echo "Claude settings step must not run Engineering System setup" >&2
@@ -19,6 +25,7 @@ fi
 
 STEP_HOME="$WORK/step-home"
 mkdir -p "$STEP_HOME/dev/repos/engineering-system/scripts"
+# shellcheck disable=SC2016  # Fixture source: $* must reach the stub, unexpanded.
 printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$*" >"$HOME/setup-args"' \
   >"$STEP_HOME/dev/repos/engineering-system/scripts/setup.sh"
 chmod +x "$STEP_HOME/dev/repos/engineering-system/scripts/setup.sh"
