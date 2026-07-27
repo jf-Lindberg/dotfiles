@@ -10,7 +10,4 @@ else
   rm -rf /tmp/worklog-installer # ONLY destructive command in bootstrap; fixed literal path
 fi
 
-"$HOME/dev/worklog/scripts/setup.sh"
-if ! "$HOME/dev/worklog/scripts/doctor.sh"; then
-  echo "worklog: doctor reported a problem; review its output above" >&2
-fi
+"$HOME/dev/worklog/scripts/setup.sh" --no-settings --no-aliases

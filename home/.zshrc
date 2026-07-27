@@ -36,4 +36,7 @@ source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 # Prompt (starship reads ~/.config/starship.toml, symlinked from this repo)
 eval "$(starship init zsh)"
 
-# worklog aliases are appended below by worklog's scripts/setup.sh
+# Worklog is installed after this file is linked, so source it conditionally.
+if [ -f "$HOME/dev/worklog/config/shell/aliases.sh" ]; then
+  source "$HOME/dev/worklog/config/shell/aliases.sh"
+fi

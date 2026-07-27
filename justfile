@@ -11,4 +11,7 @@ lint:
 fmt:
   shfmt -w -i 2 -ci bootstrap.sh steps/*.sh
 
-check: lint
+test:
+  tests/test-claude-settings.sh
+
+check: lint test
