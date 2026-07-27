@@ -13,5 +13,6 @@ fmt:
 
 test:
   tests/test-claude-settings.sh
+  tests/test-bootstrap-sandbox.sh
 
 check: lint test
