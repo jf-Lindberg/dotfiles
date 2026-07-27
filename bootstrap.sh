@@ -15,8 +15,18 @@ echo
 # Phase 11 in the implementation brief is the single source of truth for the
 # manual tail. Print it verbatim so the documentation and terminal checklist
 # cannot drift apart.
-awk '
+CHECKLIST="$(awk '
   /^## Phase 11 —/ { printing = 1; next }
   printing && /^---$/ { exit }
   printing { print }
-' "$REPO/docs/dotfiles-setup-plan.md"
+' "$REPO/docs/dotfiles-setup-plan.md")"
+
+# An edited heading would otherwise leave bootstrap silently printing nothing
+# and still exiting 0, hiding the manual steps that finish the install.
+if [ -z "$CHECKLIST" ]; then
+  echo "bootstrap: could not extract the Phase 11 checklist from" \
+    "docs/dotfiles-setup-plan.md; complete the manual steps from that file" >&2
+  exit 1
+fi
+
+printf '%s\n' "$CHECKLIST"
