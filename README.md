@@ -34,8 +34,10 @@ cd ~/dev/repos/dotfiles
 The bootstrap installs Homebrew and the `Brewfile`, backs up existing config
 before linking this repository, installs oh-my-zsh, clones repositories listed
 in `repos.txt`, installs the mise runtimes and `tsx`, and installs worklog using
-its mirror layout. Every numbered step is independently runnable and intended
-to be idempotent.
+its mirror layout. Dotfiles then centrally reconciles the Claude settings used
+by Worklog and, when present, sets up Engineering System in a dedicated step
+before that reconciliation. Every numbered step is independently runnable and
+intended to be idempotent.
 
 After the script finishes, follow the numbered manual checklist it prints. That
 checklist is authoritative for the remaining Git identity, permissions,
@@ -74,6 +76,19 @@ git -C ~/dev/worklog status
 Use `~/dev/worklog/scripts/doctor.sh` to verify the mirror. Do not move worklog
 into `~/dev/repos`, and do not add it to `repos.txt`.
 
+## Claude settings ownership
+
+Dotfiles is the central owner of the Claude directory grants and Worklog
+cadence hook for this machine. It invokes Worklog with `--no-settings
+--no-aliases`; the aliases are sourced directly by `home/.zshrc`. If
+`~/dev/repos/engineering-system` exists, step 75 invokes its setup with
+`--no-settings`. Step 80 then includes its configured paths in the same central
+reconciliation.
+
+The ownership manifest lives outside every checkout at
+`~/.local/state/dotfiles/claude-settings.json`. This keeps install order from
+letting one package remove settings another package still needs.
+
 ## Development
 
 The validation commands do not run bootstrap:
@@ -84,8 +99,9 @@ just fmt
 just check
 ```
 
-`just lint` runs ShellCheck and verifies shfmt formatting. A true bootstrap
-test still requires a throwaway macOS user or a fresh VM; until then, the setup
+`just lint` runs ShellCheck and verifies shfmt formatting. `just test` exercises
+the Claude settings reconciler in a temporary directory. A true bootstrap test
+still requires a throwaway macOS user or a fresh VM; until then, the setup
 scripts have not been tested on a clean machine.
 
 Packages intentionally excluded from the current machine include `ffmpeg`,

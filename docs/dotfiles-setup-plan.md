@@ -93,7 +93,11 @@ Java work here. The fresh machine drops it.
 │   ├── 40-omz.sh
 │   ├── 50-repos.sh
 │   ├── 60-runtimes.sh      # mise install (node + python + go) + global tsx
-│   └── 70-worklog.sh
+│   ├── 70-worklog.sh
+│   ├── 75-engineering-system.sh
+│   └── 80-claude-settings.sh
+├── scripts/
+│   └── reconcile-claude-settings.py
 ├── home/                  # symlinked into $HOME
 │   ├── .zshrc
 │   ├── .zprofile
@@ -231,7 +235,10 @@ source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 # Prompt (starship reads ~/.config/starship.toml, symlinked from this repo)
 eval "$(starship init zsh)"
 
-# worklog aliases are appended below by worklog's scripts/setup.sh
+# Worklog is installed after this file is linked, so source it conditionally.
+if [ -f "$HOME/dev/worklog/config/shell/aliases.sh" ]; then
+  source "$HOME/dev/worklog/config/shell/aliases.sh"
+fi
 ```
 
 > **Source-order rules that matter here:** `zsh-syntax-highlighting` must come **after**
@@ -248,7 +255,7 @@ eval "$(starship init zsh)"
 | `export SSL_CERT_FILE=$(python3 -c "import certifi; ...")` | Resolves against Apple's deprecated system Python 3.9 and reads a `pip install --user` artifact under `~/Library/Python/3.9/`. On a fresh machine the import fails, the `$( )` yields empty, and you export **`SSL_CERT_FILE=""`** — worse than unset: some TLS stacks honour it, find no CA bundle, and break HTTPS confusingly. |
 | `export REQUESTS_CA_BUNDLE=$(python3 -c "import certifi; ...")` | Same, and spawns a second Python interpreter per shell start. |
 | ~100 lines of omz template comments | Recoverable from omz's repo; a 30-line file is one you'll actually read. |
-| worklog alias block (`# >>> worklog aliases >>> ... <<<`) | `worklog/scripts/setup.sh` writes this itself. Keeping it here means it appears **twice** on a fresh machine. |
+| worklog-managed alias block (`# >>> worklog aliases >>> ... <<<`) | Dotfiles owns one stable source line instead, and invokes Worklog with `--no-aliases`, so setup never dirties this checkout. |
 
 `ZSH_THEME=""` rather than `"robbyrussell"`: Starship owns the prompt, so any omz theme would be
 inert. Empty is the honest description. oh-my-zsh itself is kept — but only for `compinit`
@@ -445,6 +452,8 @@ independently runnable. `$REPO` = the dotfiles repo root (derive from the script
 | `50-repos.sh` | `mkdir -p ~/dev/{repos,go}`; clone each line of `repos.txt` if target missing | `[ -d "$target" ]` per repo |
 | `60-runtimes.sh` | `mise install` (node + python + go) + global tsx (Phase 5) | mise's own idempotency (`mise install` is a no-op if the versions are present) |
 | `70-worklog.sh` | Mirror install (Phase 7) | `[ -d ~/.local/share/worklog.git ]` |
+| `75-engineering-system.sh` | Run Engineering System setup with externally managed settings when its repository is present | setup is idempotent; missing repository is reported and skipped |
+| `80-claude-settings.sh` | Central Claude settings reconciliation for Worklog and optional Engineering System | owned state in `~/.local/state/dotfiles/claude-settings.json` |
 
 ### The oh-my-zsh ordering trap
 
@@ -487,8 +496,7 @@ else
   rm -rf /tmp/worklog-installer     # ONLY destructive command in bootstrap; fixed literal path
 fi
 
-"$HOME/dev/worklog/scripts/setup.sh"     # safe to re-run; appends aliases to ~/.zshrc
-"$HOME/dev/worklog/scripts/doctor.sh"    # verification; non-fatal
+"$HOME/dev/worklog/scripts/setup.sh" --no-settings --no-aliases
 ```
 
 Design notes (all load-bearing):
@@ -497,10 +505,11 @@ Design notes (all load-bearing):
   from a failed install; the mirror's presence means the install completed.
 - **`rm -rf /tmp/worklog-installer` is the only destructive command in the entire bootstrap.**
   Fixed literal path, reached only in the branch that just created it. Keep the inline comment.
-- **`setup.sh` appends the worklog alias block to `~/.zshrc`.** By then `~/.zshrc` is a symlink
-  into the dotfiles repo, so the change lands in the repo and is tracked — desirable, and the
-  reason the block was stripped in Phase 3. `bootstrap.sh` should note at the end that
-  `git diff` in dotfiles will show worklog's addition, and to commit it.
+- **Aliases and Claude settings stay under dotfiles ownership.** `home/.zshrc`
+  sources the tracked Worklog alias file conditionally. Step 75 sets up an
+  installed Engineering System with `--no-settings`; step 80 then reconciles
+  Claude settings once for both systems. Neither package installer mutates
+  shared settings or the dotfiles checkout.
 - **`git status` in `~/dev/worklog` failing with "not a git repository" is the success
   condition**, not a bug. State this in the README so it isn't "fixed" later.
 - **Do not touch the stale `~/dev/repos/worklog`** duplicate on the current machine. Deleting it
@@ -512,11 +521,15 @@ worklog's own installer reference (for context — the script above already enco
    → creates `~/dev/worklog` (plain files, no `.git`) and `~/.local/share/worklog.git` (git data),
    writes `CLAUDE.local.md` marking the copy read-only, creates private files. `--dry-run` previews.
 3. `rm -rf /tmp/worklog-installer`
-4. `~/dev/worklog/scripts/setup.sh` — installs the Claude Code integration.
-5. `~/dev/worklog/scripts/doctor.sh` — should report "Mirror install: Git directory is outside
+4. `~/dev/worklog/scripts/setup.sh --no-settings --no-aliases` — installs the
+   Claude Code links without claiming centrally managed files.
+5. `steps/75-engineering-system.sh` — sets up Engineering System after Worklog,
+   using `--no-settings` so dotfiles retains central ownership.
+6. `steps/80-claude-settings.sh` — reconciles the shared Claude settings and
+   then runs Worklog doctor, which should report "Mirror install: Git directory is outside
    the work tree" and still run the git privacy checks. `cd ~/dev/worklog && git status` must
    fail — that is the point.
-6. Restart shell / `source ~/.zshrc` to pick up aliases.
+7. Restart shell / `source ~/.zshrc` to pick up aliases.
 
 ## Phase 8 — iTerm2 (manual, human-only)
 
@@ -614,17 +627,10 @@ exported the settings on the old machine per Phase 8.)
 
 **7. Make zsh the default shell** if it isn't: `chsh -s /bin/zsh`.
 
-**8. Commit worklog's change to your dotfiles.** worklog's `setup.sh` appended its alias block
-to `~/.zshrc` (a symlink into the repo). Review and commit it:
-```bash
-git -C ~/dev/repos/dotfiles diff home/.zshrc
-git -C ~/dev/repos/dotfiles add home/.zshrc && git -C ~/dev/repos/dotfiles commit -m "Add worklog aliases"
-```
-
-**9. Restart your shell** (or `source ~/.zshrc`) to load mise, the worklog aliases, and the
+**8. Restart your shell** (or `source ~/.zshrc`) to load mise, the worklog aliases, and the
 prompt.
 
-**10. Sanity checks:**
+**9. Sanity checks:**
 ```bash
 node --version && go version && python3 --version && uv --version && tsx --version
 mise current                       # should list node, python and go
@@ -646,7 +652,7 @@ ssh-keygen + add public key to GitHub
 git clone <dotfiles remote> ~/dev/repos/dotfiles
 cd ~/dev/repos/dotfiles && ./bootstrap.sh
    → 10 homebrew → 20 packages → 30 dotfiles → 40 omz
-   → 50 repos → 60 node → 70 worklog
+   → 50 repos → 60 node → 70 worklog → 75 Engineering System → 80 Claude settings
    → bootstrap prints the Phase 11 post-run checklist
 work through the Phase 11 checklist (git email, licenses, sign-ins, font, restart shell)
 ```
