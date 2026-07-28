@@ -84,8 +84,10 @@ Java work here. The fresh machine drops it.
 ├── bootstrap.sh           # orchestrator: runs steps/ in order, prints checklist
 ├── Brewfile
 ├── repos.txt              # generic clones, tab-separated: url<TAB>target
-├── justfile               # lint / fmt / check targets
-├── .gitignore             # .DS_Store, *.local
+├── justfile               # lint / fmt / test / check / doctor targets
+├── .editorconfig
+├── ruff.toml              # pinned Python lint/format policy
+├── .gitignore             # local and generated files
 ├── steps/
 │   ├── 10-homebrew.sh
 │   ├── 20-packages.sh
@@ -97,6 +99,7 @@ Java work here. The fresh machine drops it.
 │   ├── 75-engineering-system.sh
 │   └── 80-claude-settings.sh
 ├── scripts/
+│   ├── doctor.sh           # read-only repository + machine health
 │   └── reconcile-claude-settings.py
 ├── home/                  # symlinked into $HOME
 │   ├── .zshrc
@@ -565,8 +568,9 @@ tail.
 
 Real verification needs a clean machine. In ascending cost:
 
-1. **`shellcheck steps/*.sh bootstrap.sh`** — shellcheck + shfmt are in the Brewfile. Wire both
-   into `justfile` (`just lint`, `just fmt`).
+1. **`just check`** — ShellCheck, shfmt, pinned Ruff checks, settings tests,
+   sandboxed bootstrap tests, and the repository-only doctor. `just fmt`
+   applies the shared shell and Python formatting policy.
 2. **Re-run `./bootstrap.sh` on the current machine — it must be a complete no-op.** This is the
    idempotency test and is nearly free. Any step doing work on the second run has a missing guard.
 3. **Throwaway macOS user account**, run bootstrap there. Catches the "assumes something already
@@ -630,13 +634,31 @@ exported the settings on the old machine per Phase 8.)
 **8. Restart your shell** (or `source ~/.zshrc`) to load mise, the worklog aliases, and the
 prompt.
 
-**9. Sanity checks:**
+**9. Configure Engineering System.** If it is not yet cloned, first choose its
+approved private, content-bearing remote, add that remote to `repos.txt`, and
+rerun `steps/50-repos.sh` and `steps/75-engineering-system.sh`. Do not use the
+public tool/upstream remote as the default `origin`, because the repository
+tracks private knowledge.
+
+Its installer creates `config.local.json`, but the repository paths are
+machine-specific and cannot be filled in automatically. Set `worklogPath` to
+`~/dev/worklog`, add the repositories you want it to know about, and then rerun
+the central reconciliation:
+
+```bash
+$EDITOR ~/dev/repos/engineering-system/config.local.json
+~/dev/repos/engineering-system/scripts/setup.sh --no-settings
+~/dev/repos/dotfiles/steps/80-claude-settings.sh
+~/dev/repos/engineering-system/scripts/doctor.sh
+```
+
+**10. Sanity checks:**
 ```bash
 node --version && go version && python3 --version && uv --version && tsx --version
 mise current                       # should list node, python and go
 which node go python3              # all three must be under ~/.local/share/mise/installs/
 cd ~/dev/worklog && git status     # MUST fail with "not a git repository" — this is correct
-~/dev/worklog/scripts/doctor.sh    # should report the mirror install is healthy
+~/dev/repos/dotfiles/scripts/doctor.sh   # should report the whole installation healthy
 ```
 
 Things you may also want, but that are deliberately not automated (brittle across macOS

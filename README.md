@@ -97,12 +97,16 @@ The validation commands do not run bootstrap:
 just lint
 just fmt
 just check
+just doctor
 ```
 
-`just lint` runs ShellCheck and verifies shfmt formatting. `just test` exercises
-the Claude settings reconciler in a temporary directory. A true bootstrap test
-still requires a throwaway macOS user or a fresh VM; until then, the setup
-scripts have not been tested on a clean machine.
+`just lint` runs ShellCheck, verifies shfmt formatting, and checks the Python
+reconciler with the Ruff version pinned in `justfile`. `just test` exercises the
+Claude settings reconciler and bootstrap steps in temporary directories.
+`just doctor` is different: it inspects the real machine without changing it,
+including Homebrew, links, mise runtimes, Worklog, Engineering System, and
+central Claude settings. A true bootstrap test still requires a throwaway macOS
+user or a fresh VM.
 
 Packages intentionally excluded from the current machine include `ffmpeg`,
 `maven`, `mongosh`, `poetry`, Figma, Firefox, Transmission, and VS Code. Add

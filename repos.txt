@@ -6,6 +6,8 @@
 #
 # worklog deliberately does not belong here; steps/70-worklog.sh installs it.
 #
-# Add engineering-system here once it has a cloneable remote. Step 75 runs its
-# setup after Worklog and before the central Claude settings reconciliation:
-# <engineering-system-remote>	~/dev/repos/engineering-system
+# Add Engineering System only after choosing its approved private,
+# content-bearing remote. Do not use the public tool/upstream remote as origin:
+# the repository tracks private knowledge. Step 75 runs setup after Worklog and
+# before the central Claude settings reconciliation.
+# <approved-private-engineering-system-remote>	~/dev/repos/engineering-system

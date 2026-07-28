@@ -81,9 +81,7 @@ def settings_directories(settings, settings_path):
     elif not isinstance(directories, list) or not all(
         isinstance(item, str) for item in directories
     ):
-        raise ValueError(
-            "%s has invalid permissions.additionalDirectories" % settings_path
-        )
+        raise ValueError("%s has invalid permissions.additionalDirectories" % settings_path)
     return directories
 
 
@@ -130,9 +128,7 @@ def settings_matchers(settings, settings_path):
         matchers = []
         hooks[HOOK_EVENT] = matchers
     elif not isinstance(matchers, list):
-        raise ValueError(
-            "%s has invalid hooks.%s" % (settings_path, HOOK_EVENT)
-        )
+        raise ValueError("%s has invalid hooks.%s" % (settings_path, HOOK_EVENT))
     return matchers
 
 
@@ -208,13 +204,9 @@ def parse_state(path):
     state = load_object(path)
     directories = state.get("ownedDirectories", [])
     hooks = state.get("ownedHooks", [])
-    if not isinstance(directories, list) or not all(
-        isinstance(item, str) for item in directories
-    ):
+    if not isinstance(directories, list) or not all(isinstance(item, str) for item in directories):
         raise ValueError("%s has invalid ownedDirectories" % path)
-    if not isinstance(hooks, list) or not all(
-        isinstance(item, str) for item in hooks
-    ):
+    if not isinstance(hooks, list) or not all(isinstance(item, str) for item in hooks):
         raise ValueError("%s has invalid ownedHooks" % path)
     return directories, hooks
 
@@ -238,9 +230,7 @@ def main(argv):
         settings = load_object(args.settings)
         previous_directories, previous_hooks = parse_state(args.state)
         if args.preserve_owned_directories:
-            desired_directories = unique_paths(
-                desired_directories + previous_directories
-            )
+            desired_directories = unique_paths(desired_directories + previous_directories)
         directories = settings_directories(settings, args.settings)
         settings_matchers(settings, args.settings)
     except ValueError as error:
@@ -252,18 +242,12 @@ def main(argv):
     if not os.path.isabs(args.worklog):
         return fail("worklog path must be absolute: %s" % args.worklog)
 
-    desired_directory_keys = {
-        normalized(path) for path in desired_directories
-    }
+    desired_directory_keys = {normalized(path) for path in desired_directories}
     stale_directories = [
-        path
-        for path in previous_directories
-        if normalized(path) not in desired_directory_keys
+        path for path in previous_directories if normalized(path) not in desired_directory_keys
     ]
     stale_hooks = [
-        command
-        for command in previous_hooks
-        if normalized(command) != normalized(desired_hook)
+        command for command in previous_hooks if normalized(command) != normalized(desired_hook)
     ]
 
     removed_directories = remove_directories(settings, stale_directories)

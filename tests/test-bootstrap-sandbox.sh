@@ -102,6 +102,9 @@ cp "$ROOT/repos.txt" "$SANDBOX_REPO/"
 cp -R "$ROOT/scripts" "$SANDBOX_REPO/"
 cp -R "$ROOT/home" "$SANDBOX_REPO/"
 cp -R "$ROOT/config" "$SANDBOX_REPO/"
+# Keep the general sandbox independent of any remotes added to the real
+# manifest; the dedicated parsing section below uses local fixtures.
+printf '# sandbox repository manifest\n' >"$SANDBOX_REPO/repos.txt"
 
 python3 - "$STEPS/70-worklog.sh" <<'PY'
 import re
@@ -277,8 +280,8 @@ config_backup="$(find "$H2/.config" -maxdepth 1 -name 'starship.toml.bak-*' | he
 check "original .config/starship.toml backed up" [ -n "$config_backup" ]
 
 # --- 4. repos.txt parsing -----------------------------------------------
-# repos.txt ships comment-only, so the tab parsing and literal ~/ expansion
-# in step 50 are otherwise never executed.
+# The main sandbox uses a comment-only manifest, so exercise tab parsing and
+# literal ~/ expansion here with local repositories.
 echo "== repos.txt parsing =="
 H3="$WORK/home3"
 new_home "$H3"
