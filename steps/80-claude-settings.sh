@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORKLOG_ROOT="$HOME/dev/worklog"
+WORKLOG_ROOT="$HOME/dev/repos/worklog"
 ENGINEERING_ROOT="$HOME/dev/repos/engineering-system"
 SETTINGS_FILE="$HOME/.claude/settings.json"
 STATE_FILE="$HOME/.local/state/dotfiles/claude-settings.json"

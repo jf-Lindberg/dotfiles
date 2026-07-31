@@ -39,6 +39,7 @@ check() {
 
 # --- fixtures -----------------------------------------------------------
 # A worklog stand-in that satisfies the contract steps 70 and 80 depend on:
+# an ordinary checkout (step 70 skips cloning when the directory exists),
 # setup.sh, doctor.sh, and the cadence.sh hook the reconciler installs.
 make_worklog_fixture() {
   local target="$1"
@@ -83,9 +84,13 @@ PY
 new_home() {
   local home="$1"
   mkdir -p "$home/dev/repos"
-  make_worklog_fixture "$home/dev/worklog"
+  make_worklog_fixture "$home/dev/repos/worklog"
+  # Worklog's private data lives outside the checkout; Engineering System points
+  # at the data directory, while step 80 derives the cadence hook from the
+  # checkout. Both must end up granted.
+  mkdir -p "$home/.local/share/worklog-data"
   make_engineering_fixture "$home/dev/repos/engineering-system" \
-    "$home/dev/worklog" "$home/dev/repos/registered"
+    "$home/.local/share/worklog-data" "$home/dev/repos/registered"
   mkdir -p "$home/dev/repos/registered"
 }
 
@@ -112,13 +117,17 @@ import sys
 
 path = sys.argv[1]
 source = open(path, encoding="utf-8").read()
-# Replace the network install with a no-op; the fixture worklog already exists.
-source = re.sub(
-    r"if \[ -d \"\$HOME/\.local/share/worklog\.git\".*?\nfi\n",
+# Replace the network clone with a no-op; the fixture worklog already exists.
+# The step would skip the clone anyway (the directory is present), but strip it
+# outright so the sandbox cannot reach the network if the fixture changes.
+source, count = re.subn(
+    r"if \[ ! -d \"\$WORKLOG_ROOT\" \]; then.*?\nfi\n",
     'echo "worklog: sandbox fixture in place"\n',
     source,
     flags=re.DOTALL,
 )
+if count != 1:
+    sys.exit("70-worklog.sh: expected exactly one clone guard, found %d" % count)
 open(path, "w", encoding="utf-8").write(source)
 PY
 
@@ -188,13 +197,15 @@ state = json.load(
 )
 directories = settings["permissions"]["additionalDirectories"]
 expected = [
-    os.path.join(home, "dev", "worklog"),
+    os.path.join(home, "dev", "repos", "worklog"),
+    os.path.join(home, ".local", "share", "worklog-data"),
     os.path.join(home, "dev", "repos", "engineering-system"),
     os.path.join(home, "dev", "repos", "registered"),
 ]
 missing = [path for path in expected if path not in directories]
 assert not missing, "missing grants: %s" % missing
-hook = os.path.join(home, "dev", "worklog", "scripts", "cadence.sh")
+# The hook comes from the checkout, not the data directory.
+hook = os.path.join(home, "dev", "repos", "worklog", "scripts", "cadence.sh")
 assert state["ownedHooks"] == [hook], state["ownedHooks"]
 commands = [
     entry["command"]
@@ -203,7 +214,7 @@ commands = [
 ]
 assert commands.count(hook) == 1, commands
 PY
-  echo "  ok: step 80 granted worklog, engineering, and registered repos"
+  echo "  ok: step 80 granted worklog checkout and data dir, engineering, and registered repos"
 else
   fail "step 80 grants or cadence hook are wrong"
   cat "$WORK/grants.log" >&2

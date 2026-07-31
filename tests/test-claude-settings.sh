@@ -8,10 +8,10 @@ trap 'rm -rf "$WORK"' EXIT
 # The greps below search for these strings literally; expanding them here
 # would defeat the assertion.
 # shellcheck disable=SC2016
-grep -qF 'source "$HOME/dev/worklog/config/shell/aliases.sh"' \
+grep -qF 'source "$HOME/dev/repos/worklog/config/shell/aliases.sh"' \
   "$ROOT/home/.zshrc"
 # shellcheck disable=SC2016
-grep -qF '"$HOME/dev/worklog/scripts/setup.sh" --no-settings --no-aliases' \
+grep -qF '"$WORKLOG_ROOT/scripts/setup.sh" --no-settings --no-aliases' \
   "$ROOT/steps/70-worklog.sh"
 # shellcheck disable=SC2016
 grep -qF '"$ENGINEERING_ROOT/scripts/setup.sh" --no-settings' \

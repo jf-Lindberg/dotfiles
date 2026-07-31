@@ -37,6 +37,6 @@ source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 eval "$(starship init zsh)"
 
 # Worklog is installed after this file is linked, so source it conditionally.
-if [ -f "$HOME/dev/worklog/config/shell/aliases.sh" ]; then
-  source "$HOME/dev/worklog/config/shell/aliases.sh"
+if [ -f "$HOME/dev/repos/worklog/config/shell/aliases.sh" ]; then
+  source "$HOME/dev/repos/worklog/config/shell/aliases.sh"
 fi

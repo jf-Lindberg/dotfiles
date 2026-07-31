@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -d "$HOME/.local/share/worklog.git" ] && [ -d "$HOME/dev/worklog" ]; then
-  echo "worklog: already installed, skipping mirror install"
-else
-  git clone https://github.com/jf-Lindberg/worklog.git /tmp/worklog-installer
-  /tmp/worklog-installer/scripts/install-mirror.sh \
-    --remote https://github.com/jf-Lindberg/worklog.git
-  rm -rf /tmp/worklog-installer # ONLY destructive command in bootstrap; fixed literal path
+WORKLOG_ROOT="$HOME/dev/repos/worklog"
+
+# Worklog is an ordinary checkout; its private data lives outside the repository
+# in its own data directory, resolved by setup.sh.
+if [ ! -d "$WORKLOG_ROOT" ]; then
+  mkdir -p "$(dirname "$WORKLOG_ROOT")"
+  git clone https://github.com/jf-Lindberg/worklog.git "$WORKLOG_ROOT"
 fi
 
-"$HOME/dev/worklog/scripts/setup.sh" --no-settings --no-aliases
+# Dotfiles owns settings.json and sources the aliases from home/.zshrc, so
+# Worklog installs neither.
+"$WORKLOG_ROOT/scripts/setup.sh" --no-settings --no-aliases

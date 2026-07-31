@@ -167,14 +167,14 @@ for runtime_command in node python3 go; do
   esac
 done
 
-section "Worklog mirror"
-WORKLOG_ROOT="$HOME/dev/worklog"
+section "Worklog"
+WORKLOG_ROOT="$HOME/dev/repos/worklog"
 if [ ! -x "$WORKLOG_ROOT/scripts/doctor.sh" ]; then
   fail "Worklog doctor is absent at $WORKLOG_ROOT/scripts/doctor.sh."
-elif [ -e "$WORKLOG_ROOT/.git" ]; then
-  fail "Worklog contains .git; the expected installation is a detached mirror."
+elif [ ! -e "$WORKLOG_ROOT/.git" ]; then
+  fail "Worklog has no .git; the expected installation is an ordinary checkout."
 elif "$WORKLOG_ROOT/scripts/doctor.sh"; then
-  pass "Worklog mirror and integration are healthy."
+  pass "Worklog repository and integration are healthy."
 else
   fail "Worklog doctor reported problems."
 fi

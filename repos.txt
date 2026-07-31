@@ -4,7 +4,9 @@
 # Example:
 # git@github.com:owner/repo.git	~/dev/repos/repo
 #
-# worklog deliberately does not belong here; steps/70-worklog.sh installs it.
+# worklog deliberately does not belong here. It is an ordinary checkout at
+# ~/dev/repos/worklog, but it needs `scripts/setup.sh` run after cloning; a
+# plain repos.txt clone would skip that. steps/70-worklog.sh does both.
 #
 # Add Engineering System only after choosing its approved private,
 # content-bearing remote. Do not use the public tool/upstream remote as origin:

@@ -62,19 +62,25 @@ Changing mise's Node version can therefore make that global disappear. Use
 `npx tsx` for one-off calls, or install `tsx` as a project dev dependency for
 real projects.
 
-## worklog's mirror layout
+## worklog and Engineering System data
 
-worklog lives at `~/dev/worklog`, while its Git data lives separately at
-`~/.local/share/worklog.git`. The work tree intentionally contains no `.git`.
-Consequently, this command failing with “not a git repository” is the success
-condition:
+Both are ordinary checkouts under `~/dev/repos`. Their private content lives
+outside the repositories, in separate data directories:
 
-```bash
-git -C ~/dev/worklog status
-```
+| Repository | Checkout | Data |
+| --- | --- | --- |
+| worklog | `~/dev/repos/worklog` | `~/.local/share/worklog-data` |
+| Engineering System | `~/dev/repos/engineering-system` | `~/.local/share/engineering-system-data` |
 
-Use `~/dev/worklog/scripts/doctor.sh` to verify the mirror. Do not move worklog
-into `~/dev/repos`, and do not add it to `repos.txt`.
+Each resolves its data directory from `$WORKLOG_DATA_DIR` / `$ES_DATA_DIR`,
+then `dataDir` in a gitignored `config.local.json`, then the XDG default above.
+
+worklog stays out of `repos.txt` because it needs `scripts/setup.sh` run after
+cloning; `steps/70-worklog.sh` does both. Use
+`~/dev/repos/worklog/scripts/doctor.sh` to verify it.
+
+Engineering System's `config.local.json` sets `worklogPath` to worklog's **data
+directory** (the one holding `commitments.md`), not its checkout.
 
 ## Claude settings ownership
 
@@ -84,6 +90,10 @@ cadence hook for this machine. It invokes Worklog with `--no-settings
 `~/dev/repos/engineering-system` exists, step 75 invokes its setup with
 `--no-settings`. Step 80 then includes its configured paths in the same central
 reconciliation.
+
+Step 80 passes worklog's **checkout** as `--worklog`, because that both grants
+the directory and locates the cadence hook at `scripts/cadence.sh`. worklog's
+data directory is granted separately, via the path Engineering System reports.
 
 The ownership manifest lives outside every checkout at
 `~/.local/state/dotfiles/claude-settings.json`. This keeps install order from
