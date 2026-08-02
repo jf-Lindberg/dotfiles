@@ -19,8 +19,10 @@ export VISUAL="nvim"
 export GOPATH="$HOME/dev/go"
 export GOBIN="$HOME/.local/bin"
 
-# PATH — $HOME/.local/bin holds GOBIN output and the claude binary
-export PATH="$HOME/.local/bin:$PATH"
+# PATH — $HOME/.local/bin holds GOBIN output and the claude binary;
+# $HOME/bin is dotfiles-managed (symlinked from home/bin) and holds hand-written
+# scripts such as the iTerm2 semantic-history handler.
+export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
 
 # mise — polyglot runtime manager; owns node, python and go.
 # Must come AFTER the PATH export above so mise's shims take precedence over

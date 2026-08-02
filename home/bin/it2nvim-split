@@ -1,0 +1,56 @@
+#!/bin/bash
+# Open a file in nvim in a new tmux pane.
+# Intended as an iTerm2 Semantic History handler:
+#   Settings > Profiles > Advanced > Semantic History > Run command...
+#   /Users/flindberg/bin/it2nvim-split \1 \2
+#
+# iTerm2 passes \1 = filename, \2 = line number. Semantic History runs this
+# outside the tmux client, so $TMUX is unset and the target session must be
+# resolved explicitly.
+
+set -u
+
+NVIM=/opt/homebrew/bin/nvim
+TMUX_BIN=/opt/homebrew/bin/tmux
+
+file=${1:-}
+line=${2:-}
+
+[ -n "$file" ] || exit 1
+
+# Semantic History may hand over a relative path; resolve against the cwd it
+# invoked us with so nvim opens the right file regardless.
+case $file in
+  /*) abs=$file ;;
+  *)  abs=$PWD/$file ;;
+esac
+
+dir=$(dirname "$abs")
+base=$(basename "$abs")
+
+# nvim's +N takes a bare integer; ignore anything else iTerm2 might pass.
+case $line in
+  ''|*[!0-9]*) plus= ;;
+  *) plus="+$line" ;;
+esac
+
+# Prefer the session currently attached; fall back to the most recent one.
+# Several sessions can be attached at once (an agent session alongside the one
+# being looked at), so "first attached" is arbitrary. Sort attached sessions by
+# last activity and take the most recent, which is the one in front.
+session=$("$TMUX_BIN" list-sessions \
+  -F '#{session_attached} #{session_activity} #{session_name}' 2>/dev/null \
+  | awk '$1 != "0" { print $2, $3 }' | sort -rn | awk 'NR==1 { print $2 }')
+
+if [ -z "$session" ]; then
+  session=$("$TMUX_BIN" list-sessions -F '#{session_activity} #{session_name}' 2>/dev/null \
+    | sort -rn | awk 'NR==1 { print $2 }')
+fi
+
+if [ -z "$session" ]; then
+  # No tmux server running; nothing sensible to split into.
+  open -a iTerm2
+  exit 0
+fi
+
+"$TMUX_BIN" split-window -h -t "$session" -c "$dir" "$NVIM $plus -- '$base'"
