@@ -20,6 +20,9 @@ reconcile_args=(
 
 if [ -x "$ENGINEERING_ROOT/scripts/setup.sh" ]; then
   reconcile_args+=(--directory "$ENGINEERING_ROOT")
+  if [ -x "$ENGINEERING_ROOT/scripts/inbox-depth.sh" ]; then
+    reconcile_args+=(--hook "$ENGINEERING_ROOT/scripts/inbox-depth.sh")
+  fi
 
   if python3 "$ENGINEERING_ROOT/scripts/config.py" \
     "$ENGINEERING_ROOT" --validate >/dev/null 2>&1; then

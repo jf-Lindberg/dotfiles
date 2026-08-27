@@ -36,9 +36,10 @@ SETTINGS="$WORK/settings.json"
 STATE="$WORK/state/claude-settings.json"
 WORKLOG="$WORK/worklog"
 ENGINEERING="$WORK/engineering-system"
+ENGINEERING_HOOK="$ENGINEERING/scripts/inbox-depth.sh"
 REPOSITORY="$WORK/repository"
 
-mkdir -p "$WORKLOG/scripts" "$ENGINEERING" "$REPOSITORY"
+mkdir -p "$WORKLOG/scripts" "$ENGINEERING/scripts" "$REPOSITORY"
 printf '{"theme":"dark","permissions":{"additionalDirectories":["/keep"]}}\n' \
   >"$SETTINGS"
 
@@ -47,23 +48,24 @@ python3 "$ROOT/scripts/reconcile-claude-settings.py" \
   --state "$STATE" \
   --worklog "$WORKLOG" \
   --directory "$ENGINEERING" \
+  --hook "$ENGINEERING_HOOK" \
   --directory "$REPOSITORY" >/dev/null
 
-python3 - "$SETTINGS" "$STATE" "$WORKLOG" "$ENGINEERING" "$REPOSITORY" <<'PY'
+python3 - "$SETTINGS" "$STATE" "$WORKLOG" "$ENGINEERING" "$ENGINEERING_HOOK" "$REPOSITORY" <<'PY'
 import json
 import os
 import sys
 
 settings = json.load(open(sys.argv[1]))
 state = json.load(open(sys.argv[2]))
-worklog, engineering, repository = sys.argv[3:]
+worklog, engineering, engineering_hook, repository = sys.argv[3:]
 directories = settings["permissions"]["additionalDirectories"]
 assert settings["theme"] == "dark"
 assert "/keep" in directories
 assert all(path in directories for path in (worklog, engineering, repository))
 assert state["ownedDirectories"] == [worklog, engineering, repository]
 command = os.path.join(worklog, "scripts", "cadence.sh")
-assert state["ownedHooks"] == [command]
+assert state["ownedHooks"] == [command, engineering_hook]
 entries = settings["hooks"]["UserPromptSubmit"]
 commands = [
     entry["command"]
@@ -71,6 +73,7 @@ commands = [
     for entry in matcher.get("hooks", [])
 ]
 assert commands.count(command) == 1
+assert commands.count(engineering_hook) == 1
 PY
 
 # Idempotence: no duplicate directory or hook entries.
@@ -79,9 +82,10 @@ python3 "$ROOT/scripts/reconcile-claude-settings.py" \
   --state "$STATE" \
   --worklog "$WORKLOG" \
   --directory "$ENGINEERING" \
+  --hook "$ENGINEERING_HOOK" \
   --directory "$REPOSITORY" >/dev/null
 
-# Removing a declaration retracts only the central owner's stale entry.
+# Removing declarations retracts only the central owner's stale entries.
 python3 "$ROOT/scripts/reconcile-claude-settings.py" \
   --settings "$SETTINGS" \
   --state "$STATE" \
@@ -107,6 +111,7 @@ commands = [
     for entry in matcher.get("hooks", [])
 ]
 assert commands.count(command) == 1
+assert all("inbox-depth.sh" not in command for command in commands)
 PY
 
 # Malformed settings are rejected without being overwritten.

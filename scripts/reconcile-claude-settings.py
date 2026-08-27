@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Centrally reconcile Claude settings used by dotfiles-managed tools.
 
-Dotfiles is the sole owner of the declared directory grants and Worklog hook.
+Dotfiles is the sole owner of the declared directory grants and tool hooks.
 Unrelated settings are preserved. A separate state file records only the
 entries this reconciler owns so removed declarations can be retracted safely.
 """
@@ -217,6 +217,7 @@ def parse_args(argv):
     parser.add_argument("--state", required=True)
     parser.add_argument("--worklog", required=True)
     parser.add_argument("--directory", action="append", default=[])
+    parser.add_argument("--hook", action="append", default=[])
     parser.add_argument("--preserve-owned-directories", action="store_true")
     return parser.parse_args(argv[1:])
 
@@ -224,7 +225,7 @@ def parse_args(argv):
 def main(argv):
     args = parse_args(argv)
     desired_directories = unique_paths([args.worklog] + args.directory)
-    desired_hook = hook_command(args.worklog)
+    desired_hooks = unique_paths([hook_command(args.worklog)] + args.hook)
 
     try:
         settings = load_object(args.settings)
@@ -241,13 +242,17 @@ def main(argv):
             return fail("directory must be absolute: %s" % path)
     if not os.path.isabs(args.worklog):
         return fail("worklog path must be absolute: %s" % args.worklog)
+    for command in desired_hooks:
+        if not os.path.isabs(command):
+            return fail("hook command must be absolute: %s" % command)
 
     desired_directory_keys = {normalized(path) for path in desired_directories}
+    desired_hook_keys = {normalized(command) for command in desired_hooks}
     stale_directories = [
         path for path in previous_directories if normalized(path) not in desired_directory_keys
     ]
     stale_hooks = [
-        command for command in previous_hooks if normalized(command) != normalized(desired_hook)
+        command for command in previous_hooks if normalized(command) not in desired_hook_keys
     ]
 
     removed_directories = remove_directories(settings, stale_directories)
@@ -261,11 +266,11 @@ def main(argv):
             directories.append(path)
             present.add(normalized(path))
             added_directories += 1
-    added_hook = add_hook(settings, args.settings, desired_hook)
+    added_hooks = sum(add_hook(settings, args.settings, command) for command in desired_hooks)
 
     state = {
         "ownedDirectories": desired_directories,
-        "ownedHooks": [desired_hook],
+        "ownedHooks": desired_hooks,
     }
     try:
         atomic_write(args.settings, settings)
@@ -278,7 +283,7 @@ def main(argv):
             {
                 "addedDirectories": added_directories,
                 "removedDirectories": removed_directories,
-                "addedHooks": 1 if added_hook else 0,
+                "addedHooks": added_hooks,
                 "removedHooks": removed_hooks,
             }
         )

@@ -2,7 +2,7 @@
 # Open a file in nvim in a new tmux pane.
 # Intended as an iTerm2 Semantic History handler:
 #   Settings > Profiles > Advanced > Semantic History > Run command...
-#   /Users/flindberg/bin/it2nvim-split \1 \2
+#   $HOME/bin/it2nvim-split \1 \2
 #
 # iTerm2 passes \1 = filename, \2 = line number. Semantic History runs this
 # outside the tmux client, so $TMUX is unset and the target session must be

@@ -8,8 +8,7 @@
 # ~/dev/repos/worklog, but it needs `scripts/setup.sh` run after cloning; a
 # plain repos.txt clone would skip that. steps/70-worklog.sh does both.
 #
-# Add Engineering System only after choosing its approved private,
-# content-bearing remote. Do not use the public tool/upstream remote as origin:
-# the repository tracks private knowledge. Step 75 runs setup after Worklog and
-# before the central Claude settings reconciliation.
-# <approved-private-engineering-system-remote>	~/dev/repos/engineering-system
+# Engineering System is a public tooling checkout. Private knowledge lives in
+# ~/.local/share/engineering-system-data and must never be committed here.
+# Step 75 runs setup after Worklog and before central settings reconciliation.
+https://github.com/jf-Lindberg/engineering-system.git	~/dev/repos/engineering-system

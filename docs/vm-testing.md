@@ -18,11 +18,13 @@ similar permissions only through dialogs a script cannot answer. Budget about
 - Every formula and cask in the `Brewfile` still resolves and installs.
 - `mise install` provisions Go, Python, and Node from the linked
   `config/mise/config.toml`, and `tsx` lands under the default Node.
-- The real `70-worklog.sh` clone from GitHub works, including the mirror layout
-  (`~/.local/share/worklog.git` plus a work tree with no `.git`).
+- The real `70-worklog.sh` clone from GitHub creates an ordinary checkout at
+  `~/dev/repos/worklog`, runs setup without claiming shared settings, and uses
+  the external Worklog data directory.
 - The ordering assumption holds end to end — step 30 links the mise config
   before step 60 reads it.
-- The Phase 11 checklist prints, and its manual steps are followed by a human.
+- `docs/post-bootstrap-checklist.md` prints verbatim, and its manual steps are
+  followed by a human.
 
 ## Setup
 
@@ -78,8 +80,8 @@ cd ~/dev/repos/dotfiles
   to HTTPS; confirm which path it took.
 - **Step 80** — runs the real `doctor.sh`. It only warns on failure and does
   not stop the bootstrap, so read its output rather than trusting the exit code.
-- **The tail** — the Phase 11 checklist must actually print. `bootstrap.sh`
-  now exits non-zero if the extraction comes back empty.
+- **The tail** — the dedicated post-bootstrap checklist must actually print.
+  `bootstrap.sh` exits non-zero if the file is missing or empty.
 
 ## Second run
 

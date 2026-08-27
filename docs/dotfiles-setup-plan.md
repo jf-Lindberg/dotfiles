@@ -1,12 +1,10 @@
-# Implementation Brief: `~/dev/repos/dotfiles`
+# Historical implementation brief: `~/dev/repos/dotfiles`
 
-> **For the AI agent executing this:** This is a complete implementation brief. Read it
-> fully before acting. Every decision below was made deliberately with a human — do not
-> re-litigate them. Where a step says "verify before proceeding," do exactly that; several
-> steps replace live config and are not trivially reversible. Do **not** delete or overwrite
-> anything in `$HOME` without first copying and diffing it as described. The terminal
-> deliverable is the repo populated and committed — not a machine setup run; you are building
-> the tooling, not executing it against a real machine unless separately asked.
+> This records the reasoning behind the initial implementation. It is not an
+> operational runbook and some examples describe designs that have since been
+> replaced. `README.md`, the numbered scripts, and
+> `docs/post-bootstrap-checklist.md` are authoritative when they disagree with
+> this history.
 
 ## Goal
 
@@ -21,12 +19,12 @@ accumulated cruft. Target stack: **Go, Python, Node**. No Java.
 | Runtimes (Node, Python, Go) | **mise only** — no `brew "node"`, no `brew "go"`, no fnm, no nvm | One polyglot manager for all three. Rust binary, near-zero shell-startup cost, reads `.nvmrc` / `.tool-versions` / `mise.toml`. Replaced the earlier fnm+brew-go split after a trial on the current machine. |
 | Python tooling | **mise owns the interpreter, `uv` owns projects** — no `python@3.13`, no poetry | uv is kept for venvs, lockfiles and `uvx`; the interpreter itself comes from mise so `python3` is never Apple's 3.9. |
 | Terraform | **hashicorp/tap/terraform** | Current releases; homebrew-core is frozen at 1.5.7 |
-| worklog location | **`~/dev/worklog`** (NOT `~/dev/repos/worklog`) | Installer hardcodes it; matches existing `.zshrc` |
+| worklog layout | **Checkout at `~/dev/repos/worklog`; data at `~/.local/share/worklog-data`** | Keeps public tooling reproducible while private content stays outside Git. |
 | Prompt | **Starship** (`brew "starship"`, `eval "$(starship init zsh)"`) | Actively maintained, cross-shell, single TOML config. Replaced powerlevel10k (which is on life-support) after a trial. p10k is fully removed: no formula, no `.p10k.zsh`, no source lines. |
 | Interactive zsh | **oh-my-zsh kept for completion + git aliases**, `ZSH_THEME=""`, plus brew `zsh-autosuggestions` + `zsh-syntax-highlighting` | Starship is prompt-only; it does nothing for completion/suggestions. omz stays for `compinit` wiring and the `git` plugin's aliases, with the theme neutralised since Starship owns the prompt. |
 | claude-code | **Homebrew cask** (`claude-code`) | Already distributed this way; no curl installer needed |
 | Java | **removed entirely** | New job is Go/Python/Node only |
-| git identity | **`includeIf gitdir:` split** — work email default, personal email under `~/dev/personal/` | Machine holds both work and personal repos; identity should follow location, not be one global value |
+| git identity | **`includeIf gitdir:` split** — tracked personal identity for `~/dev/repos` and `~/dev/personal`; untracked work identity below `~/dev/work` | Unknown employer identity stays local and public tooling never inherits it. |
 
 ## Environment facts (verified on the current machine)
 
@@ -80,7 +78,7 @@ Java work here. The fresh machine drops it.
 
 ```
 ~/dev/repos/dotfiles/
-├── README.md              # the manual tail — licenses, sign-ins, permissions
+├── README.md              # setup overview and architecture
 ├── bootstrap.sh           # orchestrator: runs steps/ in order, prints checklist
 ├── Brewfile
 ├── repos.txt              # generic clones, tab-separated: url<TAB>target
@@ -100,12 +98,14 @@ Java work here. The fresh machine drops it.
 │   └── 80-claude-settings.sh
 ├── scripts/
 │   ├── doctor.sh           # read-only repository + machine health
-│   └── reconcile-claude-settings.py
+│   ├── reconcile-claude-settings.py
+│   └── sanitize-iterm2-plist.py
 ├── home/                  # symlinked into $HOME
 │   ├── .zshrc
 │   ├── .zprofile
-│   ├── .gitconfig         # work email default + includeIf for personal
-│   └── .gitconfig-personal
+│   ├── .gitconfig         # location-based identity dispatcher
+│   ├── .gitconfig-personal
+│   └── .gitconfig-work    # includes untracked ~/.gitconfig-work-local
 
 ├── config/                # symlinked into ~/.config/<name>
 │   ├── nvim/
@@ -152,44 +152,17 @@ diff -r ~/.config/nvim config/nvim     # must be clean before proceeding
 
 ### `home/.gitconfig` — work/personal identity split (`includeIf gitdir:`)
 
-The current file hardcodes one identity (`jakob.filip.lindberg@gmail.com`), which would stamp
-that personal address onto **every** commit on the work machine. Instead, split it: work email
-is the default, personal email applies only to repos under `~/dev/personal/`. Git chooses based
-on where the repo lives on disk — no per-repo `git config` needed.
+The final design has no global `[user]` block. The dispatcher includes the
+tracked `~/.gitconfig-personal` for repositories below `~/dev/repos/` and
+`~/dev/personal/`. Repositories below `~/dev/work/` include
+`~/.gitconfig-work`, which in turn includes the untracked,
+machine-local `~/.gitconfig-work-local`.
 
-Write `home/.gitconfig` as (keep the rest of the original file's settings — `credential`,
-`push`, etc. — intact):
-
-```ini
-[user]
-	name = jf-Lindberg
-	email = WORK_EMAIL_PLACEHOLDER    # ← the human fills this in post-run; see Phase 11
-
-[credential]
-	helper = osxkeychain
-[push]
-	autoSetupRemote = true
-
-[includeIf "gitdir:~/dev/personal/"]
-	path = ~/.gitconfig-personal
-```
-
-Also add `home/.gitconfig-personal` (this file IS committed; it holds only the personal email,
-no secret):
-
-```ini
-[user]
-	email = jakob.filip.lindberg@gmail.com
-```
-
-Notes for the agent:
-- The trailing slash in `gitdir:~/dev/personal/` is required — it matches everything under that
-  directory.
-- `includeIf` matches the repo's **on-disk location**, not its remote URL.
-- `~/.gitconfig-personal` must be symlinked by `30-dotfiles.sh` alongside `.gitconfig` (it lives
-  in `home/`, so the normal loop covers it — just confirm it's included).
-- Leave `email = WORK_EMAIL_PLACEHOLDER` literally as a placeholder. The human sets the real
-  value in Phase 11; do not invent a work address.
+This keeps the future employer identity out of the public Dotfiles history and
+prevents public tooling commits from accidentally inheriting a work address.
+Git chooses by the repository's on-disk location, so employer repositories
+belong under `~/dev/work/`. The operational creation and verification commands
+live only in `docs/post-bootstrap-checklist.md`.
 
 > `.zshrc` is NOT copied verbatim — it is rewritten in Phase 3. Copy it into `home/` first only
 > so you have the original to diff against, then overwrite `home/.zshrc` with the version below.
@@ -454,7 +427,7 @@ independently runnable. `$REPO` = the dotfiles repo root (derive from the script
 | `40-omz.sh` | Install oh-my-zsh unattended (see trap below) | `[ -d ~/.oh-my-zsh ]` |
 | `50-repos.sh` | `mkdir -p ~/dev/{repos,go}`; clone each line of `repos.txt` if target missing | `[ -d "$target" ]` per repo |
 | `60-runtimes.sh` | `mise install` (node + python + go) + global tsx (Phase 5) | mise's own idempotency (`mise install` is a no-op if the versions are present) |
-| `70-worklog.sh` | Mirror install (Phase 7) | `[ -d ~/.local/share/worklog.git ]` |
+| `70-worklog.sh` | Clone/update an ordinary checkout and run setup without shared-settings ownership | checkout existence plus setup idempotence |
 | `75-engineering-system.sh` | Run Engineering System setup with externally managed settings when its repository is present | setup is idempotent; missing repository is reported and skipped |
 | `80-claude-settings.sh` | Central Claude settings reconciliation for Worklog and optional Engineering System | owned state in `~/.local/state/dotfiles/claude-settings.json` |
 
@@ -476,74 +449,43 @@ its shell. No `$ZSH_CUSTOM` clones are needed: `plugins=(git)` is bundled with o
 ### `bootstrap.sh`
 
 Sources the step scripts in numeric order, stopping on first failure (`set -euo pipefail`). Ends
-by printing the README's manual checklist so the human knows what remains.
+by printing `docs/post-bootstrap-checklist.md` verbatim.
 
-## Phase 7 — worklog
+## Phase 7 — Worklog and Engineering System
 
-**Not** a `repos.txt` entry. worklog uses a mirror install with its own multi-step installer, a
-non-standard git layout, and a hard requirement that the work tree contain **no `.git`**. Target
-is `~/dev/worklog`.
+Worklog is an ordinary checkout at `~/dev/repos/worklog`; its private data is
+at `~/.local/share/worklog-data`. Step 70 clones the checkout when absent and
+runs its setup with `--no-settings --no-aliases`, leaving aliases and shared
+Claude settings under Dotfiles ownership.
 
-`steps/70-worklog.sh`:
+Engineering System is a public tooling checkout at
+`~/dev/repos/engineering-system`; its private data is external at
+`~/.local/share/engineering-system-data`. Step 75 runs setup with
+`--no-settings`. Step 80 is the sole settings reconciler: it owns the
+directory grants, Worklog cadence hook, and Engineering System inbox-depth
+hook, recording only its entries in
+`~/.local/state/dotfiles/claude-settings.json`.
 
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
+Both systems resolve data directories from their environment override, then
+gitignored local config, then their XDG default. Engineering System's
+`worklogPath` must be the Worklog data directory containing
+`commitments.md`, never the Worklog checkout.
 
-if [ -d "$HOME/.local/share/worklog.git" ] && [ -d "$HOME/dev/worklog" ]; then
-  echo "worklog: already installed, skipping mirror install"
-else
-  git clone https://github.com/jf-Lindberg/worklog.git /tmp/worklog-installer
-  /tmp/worklog-installer/scripts/install-mirror.sh \
-    --remote https://github.com/jf-Lindberg/worklog.git
-  rm -rf /tmp/worklog-installer     # ONLY destructive command in bootstrap; fixed literal path
-fi
+## Phase 8 — iTerm2
 
-"$HOME/dev/worklog/scripts/setup.sh" --no-settings --no-aliases
-```
+`scripts/iterm2-export.sh` snapshots the live preferences into `iterm2/` as XML, and
+`steps/35-iterm2.sh` points a new machine back at that folder. Run the export on the
+current machine and commit the result.
 
-Design notes (all load-bearing):
-
-- **Guard on `~/.local/share/worklog.git`**, not `~/dev/worklog`. The work tree alone can exist
-  from a failed install; the mirror's presence means the install completed.
-- **`rm -rf /tmp/worklog-installer` is the only destructive command in the entire bootstrap.**
-  Fixed literal path, reached only in the branch that just created it. Keep the inline comment.
-- **Aliases and Claude settings stay under dotfiles ownership.** `home/.zshrc`
-  sources the tracked Worklog alias file conditionally. Step 75 sets up an
-  installed Engineering System with `--no-settings`; step 80 then reconciles
-  Claude settings once for both systems. Neither package installer mutates
-  shared settings or the dotfiles checkout.
-- **`git status` in `~/dev/worklog` failing with "not a git repository" is the success
-  condition**, not a bug. State this in the README so it isn't "fixed" later.
-- **Do not touch the stale `~/dev/repos/worklog`** duplicate on the current machine. Deleting it
-  is a human decision, out of scope for the script.
-
-worklog's own installer reference (for context — the script above already encodes it):
-1. `git clone https://github.com/jf-Lindberg/worklog.git /tmp/worklog-installer`
-2. `/tmp/worklog-installer/scripts/install-mirror.sh --remote https://github.com/jf-Lindberg/worklog.git`
-   → creates `~/dev/worklog` (plain files, no `.git`) and `~/.local/share/worklog.git` (git data),
-   writes `CLAUDE.local.md` marking the copy read-only, creates private files. `--dry-run` previews.
-3. `rm -rf /tmp/worklog-installer`
-4. `~/dev/worklog/scripts/setup.sh --no-settings --no-aliases` — installs the
-   Claude Code links without claiming centrally managed files.
-5. `steps/75-engineering-system.sh` — sets up Engineering System after Worklog,
-   using `--no-settings` so dotfiles retains central ownership.
-6. `steps/80-claude-settings.sh` — reconciles the shared Claude settings and
-   then runs Worklog doctor, which should report "Mirror install: Git directory is outside
-   the work tree" and still run the git privacy checks. `cd ~/dev/worklog && git status` must
-   fail — that is the point.
-7. Restart shell / `source ~/.zshrc` to pick up aliases.
-
-## Phase 8 — iTerm2 (manual, human-only)
-
-Not scriptable. In iTerm2: Settings → General → Settings → check "Load settings from a custom
-folder or URL" → point at `~/dev/repos/dotfiles/iterm2` → "Save settings to folder". Commit the
-result.
-
-> **Do this on the CURRENT machine before leaving it** — otherwise font, profile, and colour
+> **Export on the CURRENT machine before leaving it** — otherwise font, profile, and colour
 > settings are lost. `~/.config/iterm2/AppSupport` is only a symlink into
-> `~/Library/Application Support/iTerm2`, not a portable export. On the new machine, set the same
-> preference once and everything restores.
+> `~/Library/Application Support/iTerm2`, not a portable export.
+
+Both the export and the restore are affected by iTerm2 holding its preferences in memory and
+rewriting them on quit. `steps/35-iterm2.sh` therefore refuses to run while iTerm2 is open,
+because a running instance would silently revert the change on exit; quit iTerm2 and rerun the
+step. Once the step has run, iTerm2 reads and writes the checkout directly, so later settings
+changes show up as diffs in `iterm2/` and the export script is no longer needed.
 
 ## Phase 9 — README
 
@@ -551,18 +493,16 @@ The README covers two things the numbered flow doesn't:
 
 **Pre-bootstrap prerequisites** (must happen before `./bootstrap.sh` can run at all):
 - `xcode-select --install` (must precede Homebrew — provides git + compilers).
-- SSH key: `ssh-keygen -t ed25519 -C "<work email>"` → `pbcopy < ~/.ssh/id_ed25519.pub` →
+- SSH key: `ssh-keygen -t ed25519 -C "<email associated with GitHub>"` → `pbcopy < ~/.ssh/id_ed25519.pub` →
   add to GitHub → `ssh -T git@github.com`. Needed to clone private repos.
 
-**Post-bootstrap steps** — do NOT re-list them here; the authoritative copy is **Phase 11**,
-which `bootstrap.sh` prints on completion. The README should just point at it ("after the
-script finishes, follow the checklist it prints") plus record the two caveats worth keeping
-near the code:
+**Post-bootstrap steps** — do NOT re-list them here. The authoritative copy is
+`docs/post-bootstrap-checklist.md`, which `bootstrap.sh` prints on completion.
+The README points to that file and keeps architecture caveats near the code:
 - The tsx-as-npm-global caveat (Phase 5).
-- "`git status` failing in `~/dev/worklog` is correct" (Phase 7).
+- Worklog is an ordinary checkout whose private data is external.
 
-Keep Phase 11 and the README in sync — Phase 11 is the single source of truth for the manual
-tail.
+Do not duplicate the operational checklist in this historical brief.
 
 ## Phase 10 — Verification
 
@@ -579,90 +519,13 @@ Real verification needs a clean machine. In ascending cost:
 
 Honest caveat to surface to the human: until (3) or (4) runs, this is untested code.
 
-## Phase 11 — What YOU (the user) must do after `./bootstrap.sh` finishes
+## Phase 11 — Post-bootstrap handoff
 
-`bootstrap.sh` should **print this exact list** as its final output. These are the steps no
-script can do for you — they need a license key, a password, a GUI toggle, or a system
-permission dialog. Do them in this order.
-
-**1. Set your work git email** (the script left a placeholder):
-
-```bash
-# edit the committed file, replacing WORK_EMAIL_PLACEHOLDER with your real work address
-$EDITOR ~/dev/repos/dotfiles/home/.gitconfig
-# then verify both identities resolve correctly:
-git -C ~/dev/repos/dotfiles config user.email          # → your WORK email
-mkdir -p ~/dev/personal && git -C ~/dev/personal config user.email   # → your PERSONAL email
-```
-Commit the change in the dotfiles repo afterwards. (The personal email is already correct in
-`.gitconfig-personal`; only the work address needs filling in.)
-
-**2. Set the terminal font** so Starship's glyphs render (otherwise git/kubernetes/language
-icons show as broken boxes): iTerm2 → Settings → Profiles → Text → Font → **MesloLGS NF**
-(installed by the Brewfile). If you load the iTerm2 settings folder (step 6) this comes along
-automatically.
-
-**3. Thaw (menu bar manager):** open it and grant **Screen Recording** permission in System
-Settings → Privacy & Security → Screen Recording. Without that permission Thaw cannot see or
-manage the menu bar. No license key — Thaw is free and open source. Then enable **Launch at
-login** in Thaw → Settings → General, or it won't come back after a reboot.
-
-> Thaw is a menu bar–only app: no dock icon, no main window. Launching it appears to do nothing —
-> the only route to its GUI is its menu bar icon → Settings. Worth knowing before you assume it
-> failed to start.
-
-Two notes on living with a menu bar manager:
-- **Alfred coexists fine.** Verified on the current machine — Thaw's five hotkeys
-  (`SearchMenuBarItems`, `ToggleHiddenSection`, …) are all **unbound by default**, so nothing
-  collides with Alfred's ⌘Space. If you later bind `SearchMenuBarItems`, avoid Alfred's trigger.
-- Hiding Alfred's own menu bar icon in Thaw costs you click-access to Alfred's preferences (reach
-  them via the ⌘Space window instead). True of any menu bar manager, Bartender included.
-
-**4. Alfred:** paste your Powerpack license. To use ⌘Space as the Alfred hotkey, first disable
-Spotlight's shortcut: System Settings → Keyboard → Keyboard Shortcuts → Spotlight → uncheck
-"Show Spotlight search", then set ⌘Space in Alfred's preferences.
-
-**5. Sign in** to: Apple ID (App Store), GitHub (`gh auth login`), Spotify, Claude Desktop,
-Docker Desktop / Docker Hub. Docker Desktop also needs its license/terms accepted on first launch.
-
-**6. iTerm2 settings:** iTerm2 → Settings → General → Settings → check "Load settings from a
-custom folder or URL" → point it at `~/dev/repos/dotfiles/iterm2`. (This only works if you
-exported the settings on the old machine per Phase 8.)
-
-**7. Make zsh the default shell** if it isn't: `chsh -s /bin/zsh`.
-
-**8. Restart your shell** (or `source ~/.zshrc`) to load mise, the worklog aliases, and the
-prompt.
-
-**9. Configure Engineering System.** If it is not yet cloned, first choose its
-approved private, content-bearing remote, add that remote to `repos.txt`, and
-rerun `steps/50-repos.sh` and `steps/75-engineering-system.sh`. Do not use the
-public tool/upstream remote as the default `origin`, because the repository
-tracks private knowledge.
-
-Its installer creates `config.local.json`, but the repository paths are
-machine-specific and cannot be filled in automatically. Set `worklogPath` to
-`~/dev/worklog`, add the repositories you want it to know about, and then rerun
-the central reconciliation:
-
-```bash
-$EDITOR ~/dev/repos/engineering-system/config.local.json
-~/dev/repos/engineering-system/scripts/setup.sh --no-settings
-~/dev/repos/dotfiles/steps/80-claude-settings.sh
-~/dev/repos/engineering-system/scripts/doctor.sh
-```
-
-**10. Sanity checks:**
-```bash
-node --version && go version && python3 --version && uv --version && tsx --version
-mise current                       # should list node, python and go
-which node go python3              # all three must be under ~/.local/share/mise/installs/
-cd ~/dev/worklog && git status     # MUST fail with "not a git repository" — this is correct
-~/dev/repos/dotfiles/scripts/doctor.sh   # should report the whole installation healthy
-```
-
-Things you may also want, but that are deliberately not automated (brittle across macOS
-versions): key repeat rate, trackpad settings, Finder showing hidden files. Set by hand.
+The operational manual tail lives in `docs/post-bootstrap-checklist.md`.
+`bootstrap.sh` prints that file verbatim and fails if it is missing or empty.
+Do not duplicate its identity, GUI, Engineering System, or verification
+instructions here; one canonical checklist is what prevents path and
+architecture drift.
 
 ---
 
@@ -675,16 +538,16 @@ git clone <dotfiles remote> ~/dev/repos/dotfiles
 cd ~/dev/repos/dotfiles && ./bootstrap.sh
    → 10 homebrew → 20 packages → 30 dotfiles → 40 omz
    → 50 repos → 60 node → 70 worklog → 75 Engineering System → 80 Claude settings
-   → bootstrap prints the Phase 11 post-run checklist
-work through the Phase 11 checklist (git email, licenses, sign-ins, font, restart shell)
+   → bootstrap prints docs/post-bootstrap-checklist.md
+work through that checklist (local work identity, configuration, sign-ins, verification)
 ```
 
 ## Open items (raise with the human; do not silently decide)
 
 - **Excluded packages** — confirm `ffmpeg`, `mongosh`, etc. genuinely aren't needed before first
   real use.
-- **Fate of `~/dev/repos/worklog`** on the current machine — out of scope for the script, but
-  worth resolving so there's one canonical copy.
+- **Worklog layout migration** — resolved: the ordinary checkout is canonical
+  and private data is external.
 
 ## Execution guardrails (for the agent)
 
@@ -692,8 +555,8 @@ work through the Phase 11 checklist (git email, licenses, sign-ins, font, restar
   real machine unless separately asked.
 - Before replacing any live `$HOME` file with a symlink: copy → `diff` → only then link, backing
   up any real file to `*.bak-<timestamp>`.
-- `rm -rf` appears exactly once (worklog installer temp dir, fixed literal path). Introduce no
-  other destructive commands.
+- Avoid destructive commands in bootstrap and keep temporary work scoped to
+  validated, per-run directories.
 - Keep each step script small, single-purpose, `set -euo pipefail`, and independently re-runnable.
 - If reality diverges from the "Environment facts" above (e.g. paths differ), stop and report
   rather than guessing.

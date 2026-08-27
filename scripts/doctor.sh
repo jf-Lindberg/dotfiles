@@ -70,8 +70,11 @@ repos.txt
 ruff.toml
 scripts/doctor.sh
 scripts/reconcile-claude-settings.py
+scripts/sanitize-iterm2-plist.py
 tests/test-bootstrap-sandbox.sh
 tests/test-claude-settings.sh
+tests/test-git-identity.sh
+tests/test-iterm2-portability.sh
 "
 missing=""
 for relative_path in $required_files; do
@@ -96,6 +99,19 @@ if [ -z "$non_executable" ]; then
   pass "Scripts are executable."
 else
   fail "Scripts are not executable:$non_executable"
+fi
+
+iterm_export="$ROOT/iterm2/com.googlecode.iterm2.plist"
+if [ ! -f "$iterm_export" ]; then
+  warn "No iTerm2 export in iterm2/; run scripts/iterm2-export.sh on the machine that has the settings."
+elif plutil -lint "$iterm_export" >/dev/null 2>&1; then
+  if grep -Eq '/Users/[^/]+' "$iterm_export"; then
+    fail "iTerm2 settings export contains a machine-specific home path."
+  else
+    pass "iTerm2 settings export is valid and username-neutral."
+  fi
+else
+  fail "iTerm2 settings export is malformed: $iterm_export"
 fi
 
 if [ "$REPO_ONLY" -eq 1 ]; then
@@ -219,6 +235,17 @@ PY
   pass "Claude settings and Dotfiles ownership state are valid JSON."
 else
   fail "Claude settings or Dotfiles ownership state is malformed."
+fi
+
+section "iTerm2"
+if [ ! -f "$ROOT/iterm2/com.googlecode.iterm2.plist" ]; then
+  warn "No iTerm2 export to load; see scripts/iterm2-export.sh."
+elif [ "$(defaults read com.googlecode.iterm2 LoadPrefsFromCustomFolder 2>/dev/null || echo 0)" != "1" ]; then
+  warn "iTerm2 is not loading settings from the checkout; quit iTerm2 and run steps/35-iterm2.sh."
+elif [ "$(resolve_path "$(defaults read com.googlecode.iterm2 PrefsCustomFolder 2>/dev/null || echo /nonexistent)")" = "$(resolve_path "$ROOT/iterm2")" ]; then
+  pass "iTerm2 loads settings from the checkout."
+else
+  fail "iTerm2 loads settings from a folder outside this repository."
 fi
 
 section "Result"

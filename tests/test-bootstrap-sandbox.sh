@@ -63,7 +63,8 @@ make_engineering_fixture() {
   # shellcheck disable=SC2016  # Fixture source: $* must reach the stub, unexpanded.
   printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "$*" >>"$HOME/engineering-setup-args"' \
     >"$target/scripts/setup.sh"
-  chmod +x "$target/scripts/setup.sh"
+  printf '%s\n' '#!/usr/bin/env bash' 'exit 0' >"$target/scripts/inbox-depth.sh"
+  chmod +x "$target/scripts/setup.sh" "$target/scripts/inbox-depth.sh"
   cat >"$target/scripts/config.py" <<PY
 #!/usr/bin/env python3
 import sys
@@ -204,15 +205,19 @@ expected = [
 ]
 missing = [path for path in expected if path not in directories]
 assert not missing, "missing grants: %s" % missing
-# The hook comes from the checkout, not the data directory.
-hook = os.path.join(home, "dev", "repos", "worklog", "scripts", "cadence.sh")
-assert state["ownedHooks"] == [hook], state["ownedHooks"]
+# Both hooks come from their tooling checkouts, not either data directory.
+worklog_hook = os.path.join(home, "dev", "repos", "worklog", "scripts", "cadence.sh")
+engineering_hook = os.path.join(
+    home, "dev", "repos", "engineering-system", "scripts", "inbox-depth.sh"
+)
+assert state["ownedHooks"] == [worklog_hook, engineering_hook], state["ownedHooks"]
 commands = [
     entry["command"]
     for matcher in settings["hooks"]["UserPromptSubmit"]
     for entry in matcher.get("hooks", [])
 ]
-assert commands.count(hook) == 1, commands
+assert commands.count(worklog_hook) == 1, commands
+assert commands.count(engineering_hook) == 1, commands
 PY
   echo "  ok: step 80 granted worklog checkout and data dir, engineering, and registered repos"
 else
@@ -344,17 +349,12 @@ run_step "$H4" 30-dotfiles.sh >"$WORK/30-order.log" 2>&1 ||
 check "step 30 supplies the mise config step 60 reads" \
   [ -f "$H4/.config/mise/config.toml" ]
 
-# --- 6. manual checklist extraction -------------------------------------
-# bootstrap.sh awk-extracts Phase 11 from the plan. A renamed heading would
-# silently print nothing and still exit 0.
+# --- 6. manual checklist ------------------------------------------------
+# bootstrap.sh prints this dedicated operational document verbatim.
 echo "== manual checklist =="
-CHECKLIST="$(awk '
-  /^## Phase 11 —/ { printing = 1; next }
-  printing && /^---$/ { exit }
-  printing { print }
-' "$ROOT/docs/dotfiles-setup-plan.md")"
-check "Phase 11 checklist is non-empty" [ -n "$CHECKLIST" ]
-check "Phase 11 checklist has real content" \
+CHECKLIST="$(cat "$ROOT/docs/post-bootstrap-checklist.md")"
+check "post-bootstrap checklist is non-empty" [ -n "$CHECKLIST" ]
+check "post-bootstrap checklist has real content" \
   [ "$(printf '%s\n' "$CHECKLIST" | wc -l | tr -d ' ')" -gt 10 ]
 
 # --- result -------------------------------------------------------------
