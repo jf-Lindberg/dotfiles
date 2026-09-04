@@ -27,6 +27,7 @@ opt.incsearch = true
 opt.termguicolors = true
 opt.signcolumn = "yes" -- always on, so the gutter doesn't jitter as diagnostics appear
 opt.cursorline = true
+opt.mouse = "a" -- drag selects buffer text; Option-drag still selects terminal cells
 opt.scrolloff = 8
 opt.sidescrolloff = 8
 opt.wrap = false

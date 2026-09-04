@@ -44,6 +44,21 @@ PY
 cp "$ROOT/iterm2/com.googlecode.iterm2.plist" "$WORK/committed.plist"
 python3 "$ROOT/scripts/sanitize-iterm2-plist.py" \
   --home "$HOME" "$WORK/committed.plist"
+python3 - "$WORK/committed.plist" <<'PY'
+import plistlib
+import sys
+
+with open(sys.argv[1], "rb") as handle:
+    preferences = plistlib.load(handle)
+
+default_guid = preferences["Default Bookmark Guid"]
+default_profile = next(
+    profile
+    for profile in preferences["New Bookmarks"]
+    if profile["Guid"] == default_guid
+)
+assert default_profile["Mouse Reporting"] is True
+PY
 if grep -qF "$HOME" "$ROOT/iterm2/com.googlecode.iterm2.plist"; then
   echo "committed iTerm2 export contains the current machine's home path" >&2
   exit 1
