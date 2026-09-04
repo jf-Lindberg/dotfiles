@@ -34,6 +34,11 @@ map("v", ">", ">gv", { desc = "Indent and reselect" })
 -- Paste over a selection without clobbering the unnamed register
 map("v", "p", '"_dP', { desc = "Paste without yanking replaced text" })
 
+-- iTerm2 sends Ctrl-C for Cmd-C when there is no terminal-native selection.
+-- In Visual mode, copy Neovim's selection to the macOS clipboard instead of
+-- cancelling it. Cmd-V is handled by iTerm2's bracketed paste support.
+map("x", "<C-c>", '"+y', { desc = "Copy selection to macOS clipboard" })
+
 -- Keep the cursor centred when jumping around
 map("n", "<C-d>", "<C-d>zz", { desc = "Half page down (centred)" })
 map("n", "<C-u>", "<C-u>zz", { desc = "Half page up (centred)" })
