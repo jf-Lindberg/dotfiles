@@ -75,6 +75,7 @@ tests/test-bootstrap-sandbox.sh
 tests/test-claude-settings.sh
 tests/test-git-identity.sh
 tests/test-iterm2-portability.sh
+tests/test-open.sh
 "
 missing=""
 for relative_path in $required_files; do

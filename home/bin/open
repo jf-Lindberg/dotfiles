@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -u
+
+# Send text files to Neovim while preserving macOS `open` for everything else.
+# The overrides make the two launchers replaceable in the test suite.
+OPEN_BIN="${DOTFILES_OPEN_BIN:-/usr/bin/open}"
+NVIM_BIN="${DOTFILES_NVIM_BIN:-nvim}"
+
+if [ "$#" -eq 0 ]; then
+  exec "$OPEN_BIN"
+fi
+
+# Keep every macOS `open` option working as-is. A leading-dash filename can
+# still be opened in Neovim by spelling it with a path prefix (./-notes.txt).
+for argument in "$@"; do
+  case "$argument" in
+    -*) exec "$OPEN_BIN" "$@" ;;
+  esac
+done
+
+nvim_files=()
+open_targets=()
+
+for target in "$@"; do
+  if [ -f "$target" ]; then
+    mime_type=$(/usr/bin/file -b --mime-type -- "$target" 2>/dev/null || true)
+    mime_encoding=$(/usr/bin/file -b --mime-encoding -- "$target" 2>/dev/null || true)
+
+    # `file` reports structured text such as JSON as application/*, while an
+    # empty file has a binary encoding, so MIME type and encoding are both
+    # needed to cover text files without mistaking binary files for text.
+    case "$mime_type:$mime_encoding" in
+      text/*:* | inode/x-empty:* | *:us-ascii | *:utf-* | *:iso-8859-*)
+        nvim_files+=("$target")
+        continue
+        ;;
+    esac
+  fi
+
+  open_targets+=("$target")
+done
+
+# For a mixed invocation, let macOS launch non-text targets first, then keep
+# Neovim attached to the terminal for all text files in one editing session.
+open_status=0
+if [ "${#open_targets[@]}" -gt 0 ]; then
+  "$OPEN_BIN" "${open_targets[@]}" || open_status=$?
+fi
+
+if [ "${#nvim_files[@]}" -gt 0 ]; then
+  exec "$NVIM_BIN" -- "${nvim_files[@]}"
+fi
+
+exit "$open_status"

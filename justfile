@@ -22,6 +22,7 @@ test:
   tests/test-bootstrap-sandbox.sh
   tests/test-git-identity.sh
   tests/test-iterm2-portability.sh
+  tests/test-open.sh
   scripts/doctor.sh --repo-only
 
 check: lint test
