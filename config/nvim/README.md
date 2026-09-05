@@ -77,7 +77,7 @@ lua/plugins/
 | `<leader>gb` | Blame line |
 | `<leader>gd` | Diff current file |
 | `]h` / `[h` | Next / previous git hunk |
-| `<C-\>` | Toggle terminal |
+| `<C-t>` | Toggle terminal (`<leader>tf` for a float) |
 
 ## Markdown
 

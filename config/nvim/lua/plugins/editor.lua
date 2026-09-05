@@ -127,14 +127,18 @@ return {
   },
 
   -- Terminal toggling without leaving nvim.
+  --
+  -- Bound to <C-t> rather than toggleterm's usual <C-\>: on a Swedish keyboard
+  -- backslash is Option-Shift-7, making the default a four-finger chord. <C-t>
+  -- is otherwise only vim's pop-tag-stack, which LSP's <C-o> replaces.
   {
     "akinsho/toggleterm.nvim",
     keys = {
-      { "<C-\\>", "<cmd>ToggleTerm<CR>", desc = "Toggle terminal" },
+      { "<C-t>", "<cmd>ToggleTerm<CR>", desc = "Toggle terminal" },
       { "<leader>tf", "<cmd>ToggleTerm direction=float<CR>", desc = "Floating terminal" },
     },
     opts = {
-      open_mapping = [[<C-\>]],
+      open_mapping = [[<C-t>]],
       direction = "horizontal",
       size = 15,
       float_opts = { border = "rounded" },
