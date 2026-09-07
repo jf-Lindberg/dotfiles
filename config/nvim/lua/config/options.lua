@@ -48,6 +48,12 @@ opt.timeoutlen = 400 -- how long to wait for a mapping sequence to complete
 -- Completion behaviour
 opt.completeopt = { "menu", "menuone", "noselect" }
 
+-- What persistence.nvim writes into a session file. Dropping the two defaults
+-- `terminal` and `blank`: a saved terminal buffer is restored with its shell
+-- already dead, leaving a buffer toggleterm no longer owns and only `:bd!` can
+-- close, and `blank` restores empty windows that carry nothing.
+opt.sessionoptions = { "buffers", "curdir", "folds", "help", "tabpages", "winsize" }
+
 -- Clipboard: share with macOS. Scheduled so it doesn't slow startup.
 vim.schedule(function()
   opt.clipboard = "unnamedplus"
