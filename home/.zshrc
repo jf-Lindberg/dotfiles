@@ -15,6 +15,17 @@ source "$ZSH/oh-my-zsh.sh"
 export EDITOR="nvim"
 export VISUAL="nvim"
 
+# Xcode Command Line Tools 26.6 bundles a broken beta SDK (MacOSX27.0.sdk)
+# that clang/xcrun pick by default (highest version wins), but whose
+# libSystem.tbd declares architecture triples this toolchain's linker can't
+# parse ("ld: tapi error: malformed file ... unknown architecture
+# arm64e.x1-macos"). Pin to the last known-good SDK until Apple ships a fixed
+# CLT release; guarded so this is a no-op once that SDK is gone or on a
+# machine that never had it.
+if [ -d /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk ]; then
+  export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk
+fi
+
 # Go
 export GOPATH="$HOME/dev/go"
 export GOBIN="$HOME/.local/bin"
@@ -37,6 +48,11 @@ source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 # Prompt (starship reads ~/.config/starship.toml, symlinked from this repo)
 eval "$(starship init zsh)"
+
+# ngrok completions
+if command -v ngrok &>/dev/null; then
+  eval "$(ngrok completion)"
+fi
 
 # Worklog is installed after this file is linked, so source it conditionally.
 if [ -f "$HOME/dev/repos/worklog/config/shell/aliases.sh" ]; then
