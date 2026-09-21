@@ -40,7 +40,6 @@ cask "font-meslo-lg-nerd-font"   # Nerd Font: starship.toml uses glyphs ( ☸ �
 
 # --- GUI ---
 cask "iterm2"
-cask "alfred"
 cask "thaw"                   # menu bar manager (Thaw) — free/OSS, replaced Bartender
 cask "spotify"
 cask "claude"                 # Claude Desktop

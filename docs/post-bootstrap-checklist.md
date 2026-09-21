@@ -26,14 +26,12 @@ new work address. Put employer repositories below `~/dev/work`; do not commit
 
 1. Confirm iTerm2 uses **MesloLGS NF** so prompt glyphs render.
 2. Open Thaw, grant Screen Recording, and enable launch at login.
-3. Paste the Alfred Powerpack license. Disable Spotlight's Command-Space
-   shortcut first if Alfred should use it.
-4. Sign in to Apple ID, GitHub (`gh auth login`), Spotify, Claude Desktop, and
+3. Sign in to Apple ID, GitHub (`gh auth login`), Spotify, Claude Desktop, and
    Docker Desktop / Docker Hub. Accept Docker's first-run terms.
-5. Quit iTerm2 and run `~/dev/repos/dotfiles/steps/35-iterm2.sh` from another
+4. Quit iTerm2 and run `~/dev/repos/dotfiles/steps/35-iterm2.sh` from another
    terminal. Reopen it and confirm new tabs start in tmux.
-6. Make zsh the default shell if needed: `chsh -s /bin/zsh`.
-7. Restart the shell (or run `source ~/.zshrc`).
+5. Make zsh the default shell if needed: `chsh -s /bin/zsh`.
+6. Restart the shell (or run `source ~/.zshrc`).
 
 ## 3. Configure Engineering System
 
